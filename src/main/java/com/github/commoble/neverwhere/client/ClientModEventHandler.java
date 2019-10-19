@@ -13,7 +13,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 @Mod.EventBusSubscriber(value= {Dist.CLIENT}, modid=Neverwhere.MODID, bus=Bus.MOD)
-public class ClientEventHandler
+public class ClientModEventHandler
 {
 	@SubscribeEvent
 	public static void onClientSetup(FMLClientSetupEvent event)

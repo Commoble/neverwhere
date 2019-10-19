@@ -1,0 +1,29 @@
+{
+	"wind":
+	{
+		"sounds":
+		[
+			{
+				"name": "neverwhere:wind1",
+				"volume": 0.5,
+				"pitch": 0.8
+			},
+			{
+				"name": "neverwhere:wind1",
+				"volume": 0.5,
+				"pitch": 0.7
+			},
+			{
+				"name": "neverwhere:wind1",
+				"volume": 0.5,
+				"pitch": 0.6
+			},
+			{
+				"name": "neverwhere:wind1",
+				"volume": 0.5,
+				"pitch": 0.5
+			}
+			
+		]
+	}
+}

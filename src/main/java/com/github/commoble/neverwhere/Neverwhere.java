@@ -1,5 +1,6 @@
 package com.github.commoble.neverwhere;
 
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -12,6 +13,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -21,8 +23,10 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
@@ -32,8 +36,10 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.ModDimension;
 import net.minecraftforge.event.RegistryEvent.Register;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingSpawnEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.RegisterDimensionsEvent;
+import net.minecraftforge.eventbus.api.Event.Result;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.RegistryObject;
@@ -52,6 +58,7 @@ public class Neverwhere
 	public static final String TELEPORTER = "teleporter";
 	public static final String NEVERWAS = "neverwas";
 	public static final String NEVERWAS_SPAWN_EGG = "neverwas_spawn_egg";
+	public static final String WIND = "wind";
 
 	// registry objects
 	public static final RegistryObject<Block> neverPortalBlock = makeRegistryObject(NEVERPORTAL,
@@ -67,6 +74,8 @@ public class Neverwhere
 
 	public static final RegistryObject<EntityType<? extends NeverwasEntity>> neverwas = makeRegistryObject(NEVERWAS,
 			ForgeRegistries.ENTITIES);
+	
+	public static final RegistryObject<SoundEvent> windSound = makeRegistryObject(WIND, ForgeRegistries.SOUND_EVENTS);
 
 	// dimension stuff
 	public static final ResourceLocation NEVERWHERE_RESOURCE_LOCATION = new ResourceLocation(MODID, MODID);
@@ -89,6 +98,7 @@ public class Neverwhere
 
 		modBus.addGenericListener(Block.class, multiObjectRegistrator(Neverwhere::onRegisterBlocks));
 		modBus.addGenericListener(Item.class, multiObjectRegistrator(Neverwhere::onRegisterItems));
+		modBus.addGenericListener(SoundEvent.class, multiObjectRegistrator(Neverwhere::onRegisterSounds));
 		modBus.addGenericListener(TileEntityType.class, multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
 		modBus.addGenericListener(EntityType.class, multiObjectRegistrator(Neverwhere::onRegisterEntities));
 		modBus.addGenericListener(ModDimension.class, singleObjectRegistrator(MODID, new NeverwhereModDimension()));
@@ -97,6 +107,7 @@ public class Neverwhere
 		forgeBus.addListener(Neverwhere::onBlockPlaced);
 		forgeBus.addListener(Neverwhere::onBlockBroken);
 		forgeBus.addListener(Neverwhere::onPlayerTick);
+		forgeBus.addListener(Neverwhere::onCheckSpawn);
 
 	}
 
@@ -144,6 +155,11 @@ public class Neverwhere
 						return Neverwhere.neverwas.get();
 					}
 				});
+	}
+	
+	public static void onRegisterSounds(Registrator<SoundEvent> reg)
+	{
+		reg.register(WIND, new SoundEvent(getModRL(WIND)));
 	}
 
 	public static void onRegisterTileEntities(Registrator<TileEntityType<?>> reg)
@@ -235,6 +251,55 @@ public class Neverwhere
 			if (portalTime >= 0 && world.rand.nextInt(100) == 0)
 			{
 				PortalHelper.displayedSpookyMessageRecently.remove(playerID);
+			}
+			
+			if (world.getDimension().getType() == Neverwhere.getDimensionType() && world.getDifficulty() != Difficulty.PEACEFUL)
+			{
+				// handle special spawning of neverwas
+				// if at minimum xp threshold for spawning, average one mob/minute (once every 1200 ticks)
+				// if at minimum xp threshold for unprovoked attacking, average one mob every ten seconds (once every 200 ticks)
+				int spawn_threshold = Config.neverwas_spawn_threshold;
+//				int attack_threshold = Config.neverwas_attack_threshold;
+				int currentXP = player.experienceLevel;
+				
+				// spawn -> 0F, attack -> 1F
+				// diff = attack-spawn
+				// x = current level
+				// slider = (x-spawn) / diff
+				// (so we need to handle the case when spawn == attack)
+				// if spawn == attack then checking xp >= attack first will be sufficient
+				if (currentXP >= spawn_threshold || player.isCreative())
+				{
+					float spawn_improbability_this_tick = 100F;
+//					if (currentXP >= attack_threshold)
+//					{
+//						spawn_improbability_this_tick = 100F;	// every five seconds
+//					}
+//					else
+//					{
+//						spawn_improbability_this_tick = 200F; // about every ten seconds
+//					}
+					if (world.rand.nextFloat()*spawn_improbability_this_tick < 1F)
+					{
+						NeverwasEntity.spawnNearPlayer(player);
+					}
+				}
+			}
+		}
+	}
+	
+	// the Neverwhere uses all the biomes of the overworld
+	// but we don't want overworld mobs to spawn
+	// so we cancel the spawning event
+	public static EnumSet<SpawnReason> deniedSpawnReasons = EnumSet.of(SpawnReason.NATURAL, SpawnReason.CHUNK_GENERATION, SpawnReason.STRUCTURE, SpawnReason.PATROL);
+	
+	public static void onCheckSpawn(LivingSpawnEvent.CheckSpawn event)
+	{
+		if (event.getWorld().getDimension().getType() == Neverwhere.getDimensionType())
+		{
+			if (deniedSpawnReasons.contains(event.getSpawnReason()))
+			{
+				event.setResult(Result.DENY);;
 			}
 		}
 	}
