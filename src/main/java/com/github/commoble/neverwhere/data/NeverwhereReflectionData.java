@@ -3,15 +3,17 @@ package com.github.commoble.neverwhere.data;
 import java.util.HashMap;
 import java.util.stream.IntStream;
 
+import com.github.commoble.neverwhere.Config;
 import com.github.commoble.neverwhere.Neverwhere;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.DimensionSavedDataManager;
@@ -21,8 +23,8 @@ public class NeverwhereReflectionData extends WorldSavedData
 {
 	private static final String DATA_NAME = Neverwhere.MODID + ":reflection_data";
 	
-	private static final String CHUNKS = "chunk";
-	private static final String CHUNKPOS = "chunk";
+	private static final String CHUNKS = "chunks";
+	private static final String CHUNKPOS = "chunkpos";
 	private static final String BLOCKS = "blocks";
 	private static final String BLOCKPOS = "blockpos";
 	private static final String BLOCKSTATE = "blockstate";
@@ -32,14 +34,14 @@ public class NeverwhereReflectionData extends WorldSavedData
 	private static final NeverwhereReflectionData CLIENT_DUMMY = new NeverwhereReflectionData();
 	
 	// get the data from the world saved data manager, instantiating it first if it doesn't exist
-	public static NeverwhereReflectionData get(World world)
+	public static NeverwhereReflectionData get(IWorld world)
 	{
 		if (!(world instanceof ServerWorld))
 		{
 			return CLIENT_DUMMY;
 		}
 		
-		ServerWorld overworld = world.getServer().getWorld(DimensionType.OVERWORLD);
+		ServerWorld overworld = ((ServerWorld)world).getServer().getWorld(DimensionType.OVERWORLD);
 		DimensionSavedDataManager storage = overworld.getSavedData();
 		return storage.getOrCreate(NeverwhereReflectionData::new, DATA_NAME);
 	}
@@ -54,7 +56,12 @@ public class NeverwhereReflectionData extends WorldSavedData
 		super(name);
 	}
 	
-	public void put(BlockPos blockPos, BlockState state)
+	/**
+	 * Puts a (blockpos, blockstate) entry into the submap for the chunk that contains that blockpos
+	 * If the submap's size exceeds the configurable limit after this operation,
+	 * then the map's contents are dumped into the relevant chunk in the Neverwhere
+	 */
+	public void put(MinecraftServer server, BlockPos blockPos, BlockState state)
 	{
 		ChunkPos chunkPos = new ChunkPos(blockPos);
 
@@ -66,10 +73,17 @@ public class NeverwhereReflectionData extends WorldSavedData
 		}
 		else
 		{
-			subMap = this.map.put(chunkPos, new HashMap<BlockPos, BlockState>());
+			subMap = new HashMap<BlockPos, BlockState>();
+			this.map.put(chunkPos, subMap);
 		}
 		
 		subMap.put(blockPos, state);
+		
+		if (subMap.size() > Config.reflection_buffer_size)
+		{
+			ServerWorld neverwhereWorld = server.getWorld(Neverwhere.getDimensionType());
+			neverwhereWorld.getChunk(blockPos);	// triggers the chunkload event
+		}
 		
 		this.markDirty();
 	}
@@ -84,6 +98,8 @@ public class NeverwhereReflectionData extends WorldSavedData
 		{
 			subMap = this.map.get(chunkPos);
 			this.map.put(chunkPos, emptyMap);
+			this.markDirty();
+			
 			return subMap;
 		}
 		else
@@ -103,7 +119,7 @@ public class NeverwhereReflectionData extends WorldSavedData
 		IntStream.range(0,chunkListSize).mapToObj(chunkIterator -> chunkList.getCompound(chunkIterator)).forEach(chunkNBT -> 
 		{
 			ChunkPos chunkPos = new ChunkPos(chunkNBT.getLong(CHUNKPOS));
-			ListNBT blockList = nbt.getList(BLOCKS, 10);
+			ListNBT blockList = chunkNBT.getList(BLOCKS, 10);
 			int blockListSize = blockList.size();
 			
 			HashMap<BlockPos, BlockState> subMap = new HashMap<>();

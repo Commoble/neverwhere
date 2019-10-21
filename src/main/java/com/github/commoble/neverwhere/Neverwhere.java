@@ -1,15 +1,19 @@
 package com.github.commoble.neverwhere;
 
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.github.commoble.neverwhere.data.NeverwhereReflectionData;
 import com.github.commoble.neverwhere.dimension.NeverwhereModDimension;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
@@ -25,21 +29,22 @@ import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.IChunk;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.ModDimension;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.RegistryEvent.Register;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
 import net.minecraftforge.event.world.BlockEvent;
+import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.RegisterDimensionsEvent;
 import net.minecraftforge.eventbus.api.Event.Result;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -115,8 +120,8 @@ public class Neverwhere
 		forgeBus.addListener(Neverwhere::onBlockBroken);
 		forgeBus.addListener(Neverwhere::onPlayerTick);
 		forgeBus.addListener(Neverwhere::onCheckSpawn);
-		
-		forgeBus.addGenericListener(Chunk.class, Neverwhere::onAttachCapabilities);
+		forgeBus.addListener(Neverwhere::onChunkLoad);
+		forgeBus.addListener(Neverwhere::onChunkUnload);
 
 	}
 
@@ -212,24 +217,15 @@ public class Neverwhere
 		IWorld world = event.getWorld();
 		// when a block is placed on the server overworld
 		if (!world.isRemote() && world.getDimension().getType() == DimensionType.OVERWORLD
-				&& !event.getState().hasTileEntity())// && world.getRandom().nextFloat() < 0.2F)
+				&& !event.getState().hasTileEntity()
+				&& !(event instanceof BlockEvent.EntityMultiPlaceEvent)
+				&& world.getRandom().nextDouble() < Config.block_place_reflection_chance)
 		{
-			if (!(event instanceof BlockEvent.EntityMultiPlaceEvent)) // dealing with these is more complicated than
-																		// it's worth
-			{
-				BlockPos pos = event.getPos();
-				MinecraftServer server = event.getEntity().getServer();
-				ServerWorld otherWorld = server.getWorld(Neverwhere.getDimensionType());
-				if (otherWorld.isBlockLoaded(pos))
-				{
-					otherWorld.setBlockState(event.getPos(), event.getState());
-				} else
-				{
-					int x = pos.getX();
-					int y = pos.getY();
-					int z = pos.getZ();
-				}
-			}
+			BlockPos pos = event.getPos();
+			BlockState state = event.getState();
+			MinecraftServer server = event.getEntity().getServer();
+			
+			Neverwhere.addBlockReflectionEntry(world, pos, state, server);
 		}
 	}
 
@@ -237,9 +233,31 @@ public class Neverwhere
 	{
 		IWorld world = event.getWorld();
 		// when a block is placed on the server overworld
-		if (!world.isRemote() && world.getDimension().getType() == DimensionType.OVERWORLD)
+		if (!world.isRemote() && world.getDimension().getType() == DimensionType.OVERWORLD
+				&& world.getRandom().nextDouble() < Config.block_break_reflection_chance)
 		{
-			event.getPlayer().getServer().getWorld(Neverwhere.getDimensionType()).removeBlock(event.getPos(), false);
+			BlockPos pos = event.getPos();
+			BlockState state = Blocks.AIR.getDefaultState();
+			MinecraftServer server = event.getPlayer().getServer();
+			
+			Neverwhere.addBlockReflectionEntry(world, pos, state, server);
+		}
+	}
+	
+	private static void addBlockReflectionEntry(IWorld world, BlockPos pos, BlockState state, MinecraftServer server)
+	{
+		// getting the world in this manner returns null if the world is not currently loaded
+		ServerWorld otherWorld = DimensionManager.getWorld(server, getDimensionType(), true, false);
+		
+		if (otherWorld != null && otherWorld.isBlockLoaded(pos))
+		{
+			otherWorld.setBlockState(pos, state);
+		}
+		else
+		{
+			NeverwhereReflectionData data = NeverwhereReflectionData.get(world);
+			
+			data.put(server, pos, state);
 		}
 	}
 
@@ -318,8 +336,56 @@ public class Neverwhere
 		}
 	}
 	
-	public static void onAttachCapabilities(AttachCapabilitiesEvent<Chunk> event)
+	public static void onChunkLoad(ChunkEvent.Load event)
 	{
-		
+		IWorld world = event.getWorld();
+		if (world != null && !world.isRemote() && world.getDimension().getType() == Neverwhere.getDimensionType())
+		{
+			NeverwhereReflectionData data = NeverwhereReflectionData.get(world);
+			IChunk chunk = event.getChunk();
+			ChunkPos chunkPos = chunk.getPos();
+			
+			Map<BlockPos, BlockState> subMap = data.getAndClearChunkData(chunkPos);
+			
+			if (subMap.size() > 0)
+			{
+				subMap.forEach((blockPos, blockState) ->
+				{
+					BlockPos posInChunk = new BlockPos(blockPos.getX() & 15, blockPos.getY(), blockPos.getZ() & 15);
+					if (!chunk.getBlockState(posInChunk).hasTileEntity())	// for complicated safety reasons
+					{
+						chunk.setBlockState(posInChunk, blockState, false);
+					}
+				});
+			}
+		}
+	}
+	
+	public static void onChunkUnload(ChunkEvent.Unload event)
+	{
+		IWorld world = event.getWorld();
+		if (world != null && world instanceof ServerWorld && world.getDimension().getType() == DimensionType.OVERWORLD)
+		{
+			// load the chunk to trigger the chunkload event above
+			ChunkPos chunkPos = event.getChunk().getPos();
+			IChunk chunkInNeverwhere = ((ServerWorld)world).getServer().getWorld(Neverwhere.getDimensionType()).getChunk(chunkPos.x, chunkPos.z);
+			
+//			NeverwhereReflectionData data = NeverwhereReflectionData.get(world);
+//			ChunkPos chunkPos = event.getChunk().getPos();
+//			
+//			Map<BlockPos, BlockState> subMap = data.getAndClearChunkData(chunkPos);
+//			
+//			if (subMap.size() > 0)
+//			{
+//				IChunk chunkInNeverwhere = ((ServerWorld)world).getServer().getWorld(Neverwhere.getDimensionType()).getChunk(chunkPos.x, chunkPos.z);
+//				
+//
+//				subMap.forEach((blockPos, blockState) ->
+//				{
+//					BlockPos posInChunk = new BlockPos(blockPos.getX() & 15, blockPos.getY(), blockPos.getZ() & 15);
+//					chunkInNeverwhere.setBlockState(posInChunk, blockState, false);
+//				});
+//			}
+		}
 	}
 }
