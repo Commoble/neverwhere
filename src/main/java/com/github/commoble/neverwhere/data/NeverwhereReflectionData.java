@@ -1,14 +1,14 @@
 package com.github.commoble.neverwhere.data;
 
 import java.util.HashMap;
-import java.util.stream.IntStream;
+import java.util.Map;
 
 import com.github.commoble.neverwhere.Config;
+import com.github.commoble.neverwhere.NBTMapHelper;
 import com.github.commoble.neverwhere.Neverwhere;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
 import net.minecraft.nbt.NBTUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
@@ -29,9 +29,25 @@ public class NeverwhereReflectionData extends WorldSavedData
 	private static final String BLOCKPOS = "blockpos";
 	private static final String BLOCKSTATE = "blockstate";
 	
-	private HashMap<ChunkPos, HashMap<BlockPos, BlockState>> map = new HashMap<>();
+	private Map<ChunkPos, Map<BlockPos, BlockState>> map = new HashMap<>();
 	
 	private static final NeverwhereReflectionData CLIENT_DUMMY = new NeverwhereReflectionData();
+	
+	private static final NBTMapHelper<BlockPos, BlockState> BLOCKS_MAPPER = new NBTMapHelper<>(
+			BLOCKS,
+			(nbt, blockPos) -> nbt.put(BLOCKPOS, NBTUtil.writeBlockPos(blockPos)),
+			nbt -> NBTUtil.readBlockPos(nbt.getCompound(BLOCKPOS)),
+			(nbt, blockState) -> nbt.put(BLOCKSTATE, NBTUtil.writeBlockState(blockState)),
+			nbt -> NBTUtil.readBlockState(nbt.getCompound(BLOCKSTATE))
+			);
+	
+	private static final NBTMapHelper<ChunkPos, Map<BlockPos, BlockState>> CHUNKS_MAPPER = new NBTMapHelper<ChunkPos, Map<BlockPos, BlockState>>(
+			CHUNKS,
+			(nbt, chunkPos) -> nbt.putLong(CHUNKPOS, chunkPos.asLong()),
+			nbt -> new ChunkPos(nbt.getLong(CHUNKPOS)),
+			(nbt, map) -> BLOCKS_MAPPER.write(map, nbt),
+			nbt -> BLOCKS_MAPPER.read(nbt)
+			);
 	
 	// get the data from the world saved data manager, instantiating it first if it doesn't exist
 	public static NeverwhereReflectionData get(IWorld world)
@@ -65,7 +81,7 @@ public class NeverwhereReflectionData extends WorldSavedData
 	{
 		ChunkPos chunkPos = new ChunkPos(blockPos);
 
-		HashMap<BlockPos, BlockState> subMap;
+		Map<BlockPos, BlockState> subMap;
 		
 		if (this.map.containsKey(chunkPos))
 		{
@@ -88,11 +104,11 @@ public class NeverwhereReflectionData extends WorldSavedData
 		this.markDirty();
 	}
 	
-	public HashMap<BlockPos, BlockState> getAndClearChunkData(ChunkPos chunkPos)
+	public Map<BlockPos, BlockState> getAndClearChunkData(ChunkPos chunkPos)
 	{
-		HashMap<BlockPos, BlockState> subMap;
+		Map<BlockPos, BlockState> subMap;
 		
-		HashMap<BlockPos, BlockState> emptyMap = new HashMap<>();
+		Map<BlockPos, BlockState> emptyMap = new HashMap<>();
 		
 		if (this.map.containsKey(chunkPos))
 		{
@@ -111,65 +127,13 @@ public class NeverwhereReflectionData extends WorldSavedData
 	@Override
 	public void read(CompoundNBT nbt)
 	{
-		HashMap<ChunkPos, HashMap<BlockPos, BlockState>> newMap = new HashMap<>();
-		
-		ListNBT chunkList = nbt.getList(CHUNKS, 10);
-		int chunkListSize = chunkList.size();
-		
-		IntStream.range(0,chunkListSize).mapToObj(chunkIterator -> chunkList.getCompound(chunkIterator)).forEach(chunkNBT -> 
-		{
-			ChunkPos chunkPos = new ChunkPos(chunkNBT.getLong(CHUNKPOS));
-			ListNBT blockList = chunkNBT.getList(BLOCKS, 10);
-			int blockListSize = blockList.size();
-			
-			HashMap<BlockPos, BlockState> subMap = new HashMap<>();
-			
-			IntStream.range(0, blockListSize).mapToObj(blockIterator -> blockList.getCompound(blockIterator)).forEach(blockNBT ->
-			{
-				BlockPos blockPos = NBTUtil.readBlockPos(blockNBT.getCompound(BLOCKPOS));
-				BlockState state = NBTUtil.readBlockState(blockNBT.getCompound(BLOCKSTATE));
-				
-				subMap.put(blockPos, state);
-			});
-			
-			newMap.put(chunkPos, subMap);
-		});
-		
-		this.map = newMap;
+		this.map = CHUNKS_MAPPER.read(nbt);
 	}
 
 	@Override
 	public CompoundNBT write(CompoundNBT compound)
 	{
-		ListNBT listOfChunks = new ListNBT();
-		this.map.entrySet().forEach(entry ->
-		{
-			ChunkPos chunkPos = entry.getKey();
-			HashMap<BlockPos, BlockState> subMap = entry.getValue();
-			
-			ListNBT listOfBlocks = new ListNBT();
-			
-			subMap.entrySet().forEach(subEntry ->
-			{
-				BlockPos pos = subEntry.getKey();
-				BlockState state = subEntry.getValue();
-				
-				CompoundNBT nbtForBlock = new CompoundNBT();
-				nbtForBlock.put(BLOCKPOS, NBTUtil.writeBlockPos(pos));
-				nbtForBlock.put(BLOCKSTATE, NBTUtil.writeBlockState(state));
-				
-				listOfBlocks.add(nbtForBlock);
-			});
-			
-			CompoundNBT nbtForChunk = new CompoundNBT();
-			nbtForChunk.putLong(CHUNKPOS, chunkPos.asLong());
-			nbtForChunk.put(BLOCKS, listOfBlocks);
-			
-			listOfChunks.add(nbtForChunk);
-		});
-		
-		compound.put(CHUNKS, listOfChunks);
-		
+		CHUNKS_MAPPER.write(this.map, compound);
 		return compound;
 	}
 
