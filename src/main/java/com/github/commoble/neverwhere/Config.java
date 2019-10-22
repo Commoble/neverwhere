@@ -1,13 +1,25 @@
 package com.github.commoble.neverwhere;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.collect.Lists;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.config.ModConfig.ModConfigEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 
 @Mod.EventBusSubscriber(modid=Neverwhere.MODID, bus = Bus.MOD)
 public class Config
@@ -22,10 +34,42 @@ public class Config
 	public static int neverwas_follow_threshold=15;
 	public static int neverwas_attack_threshold=20;
 	
+	private static final List<String> DEFAULT_WHITELIST = new ArrayList<>();
+	private static final List<String> DEFAULT_BLACKLIST = Lists.newArrayList(
+			"minecraft:anvil",
+			"minecraft:bedrock",
+			"minecraft:coal_block",
+			"minecraft:diamond_block",
+			"minecraft:emerald_block",
+			"minecraft:gold_block",
+			"minecraft:iron_block",
+			"minecraft:quartz_block",
+			"minecraft:redstone_block",
+			"minecraft:lapis_lazuli_block",
+			"minecraft:bookshelf",
+			"minecraft:clay",
+			"minecraft:diamond_ore",
+			"minecraft:emerald_ore",
+			"minecraft:gold_ore",
+			"minecraft:tnt"
+			);
 	
 	public static double block_place_reflection_chance = 0.3F;
 	public static double block_break_reflection_chance = 1.0F;
 	public static int reflection_buffer_size = 20;
+	public static Set<Block> block_reflection_whitelist = new HashSet<>();
+	public static Set<Block> block_reflection_blacklist = getBlockKeysAsBlocks(DEFAULT_BLACKLIST);
+	
+	public static boolean isBlockStateAllowedToReflectPlacement(BlockState state)
+	{
+		if (state.hasTileEntity())
+			return false;
+		
+		if (block_reflection_whitelist.size() > 0)
+			return block_reflection_whitelist.contains(state.getBlock());
+		
+		return !block_reflection_blacklist.contains(state.getBlock());
+	}
 	
 	// config the configs
 	static
@@ -46,6 +90,11 @@ public class Config
 		}
 	}
 	
+	private static Set<Block> getBlockKeysAsBlocks(List<? extends String> keys)
+	{
+		return keys.stream().map(string -> ForgeRegistries.BLOCKS.getValue(new ResourceLocation(string))).collect(Collectors.toCollection(HashSet::new));
+	}
+	
 	public static void refreshServer()
 	{
 		neverwas_spawn_threshold = SERVER.neverwas_spawn_threshold.get();
@@ -56,6 +105,8 @@ public class Config
 		block_place_reflection_chance = SERVER.block_place_reflection_chance.get();
 		block_break_reflection_chance = SERVER.block_break_reflection_chance.get();
 		reflection_buffer_size = SERVER.reflection_buffer_size.get();
+		block_reflection_whitelist = getBlockKeysAsBlocks(SERVER.block_reflection_whitelist.get());
+		block_reflection_blacklist = getBlockKeysAsBlocks(SERVER.block_reflection_blacklist.get());
 	}
 	
 	public static class ServerConfig
@@ -68,6 +119,8 @@ public class Config
 		public final ForgeConfigSpec.DoubleValue block_place_reflection_chance;
 		public final ForgeConfigSpec.DoubleValue block_break_reflection_chance;
 		public final ForgeConfigSpec.IntValue reflection_buffer_size;
+		public final ForgeConfigSpec.ConfigValue<List<? extends String>> block_reflection_whitelist;
+		public final ForgeConfigSpec.ConfigValue<List<? extends String>> block_reflection_blacklist;
 		
 		ServerConfig(ForgeConfigSpec.Builder builder)
 		{
@@ -106,6 +159,14 @@ public class Config
 					.comment("The amount of blockstate changes in a given chunk to queue up before the changes are dumped into Neverwhere")
 					.translation("neverwhere.config.reflection_buffer_limit")
 					.defineInRange("reflection_buffer_limit", 20, 0, Integer.MAX_VALUE);
+			this.block_reflection_whitelist = builder
+					.comment("Whitelist of blocks that are allowed to be reflected to the Neverwhere when placed in the Overworld. If this list is empty, all blocks that are not in the Blacklist will be allowed")
+					.translation("neverwhere.config.block_reflection_whitelist")
+					.defineList("reflection_whitelisted_blocks", Config.DEFAULT_WHITELIST, obj -> obj instanceof String && ForgeRegistries.BLOCKS.containsKey(new ResourceLocation(((String)obj))));
+			this.block_reflection_blacklist = builder
+					.comment("Blacklist of Blocks that will never be reflected to the Neverwhere when placed in the Overworld. Blocks with TileEntities will never be reflected. If the whitelist is non-empty, the whitelist takes precedence over this list.")
+					.translation("neverwhere.config.block_reflection_blacklist")
+					.defineList("reflection_blacklisted_blocks", Config.DEFAULT_BLACKLIST, obj -> obj instanceof String && ForgeRegistries.BLOCKS.containsKey(new ResourceLocation(((String)obj))));
 			
 			builder.pop();
 		}

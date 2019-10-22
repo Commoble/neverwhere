@@ -10,10 +10,12 @@ import javax.annotation.Nullable;
 
 import com.github.commoble.neverwhere.data.NeverwhereReflectionData;
 import com.github.commoble.neverwhere.dimension.NeverwhereModDimension;
+import com.github.commoble.neverwhere.feature.VoidTree;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.SaplingBlock;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
@@ -36,6 +38,10 @@ import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.IChunk;
 import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.gen.feature.AbstractTreeFeature;
+import net.minecraft.world.gen.feature.Feature;
+import net.minecraft.world.gen.feature.NoFeatureConfig;
+import net.minecraft.world.gen.feature.TreeFeature;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
@@ -43,6 +49,7 @@ import net.minecraftforge.common.ModDimension;
 import net.minecraftforge.event.RegistryEvent.Register;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
+import net.minecraftforge.event.entity.player.BonemealEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.RegisterDimensionsEvent;
@@ -69,6 +76,7 @@ public class Neverwhere
 	public static final String NEVERWAS = "neverwas";
 	public static final String NEVERWAS_SPAWN_EGG = "neverwas_spawn_egg";
 	public static final String WIND = "wind";
+	public static final String TREE = "tree_hole";
 
 	// registry objects
 	public static final RegistryObject<Block> neverPortalBlock = makeRegistryObject(NEVERPORTAL,
@@ -86,6 +94,8 @@ public class Neverwhere
 			ForgeRegistries.ENTITIES);
 	
 	public static final RegistryObject<SoundEvent> windSound = makeRegistryObject(WIND, ForgeRegistries.SOUND_EVENTS);
+	
+	public static final RegistryObject<AbstractTreeFeature<NoFeatureConfig>> wrongTree = makeRegistryObject(TREE, ForgeRegistries.FEATURES);
 
 	// dimension stuff
 	public static final ResourceLocation NEVERWHERE_RESOURCE_LOCATION = new ResourceLocation(MODID, MODID);
@@ -112,6 +122,7 @@ public class Neverwhere
 		modBus.addGenericListener(TileEntityType.class, multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
 		modBus.addGenericListener(EntityType.class, multiObjectRegistrator(Neverwhere::onRegisterEntities));
 		modBus.addGenericListener(ModDimension.class, singleObjectRegistrator(MODID, new NeverwhereModDimension()));
+		modBus.addGenericListener(Feature.class, multiObjectRegistrator(Neverwhere::onRegisterFeatures));
 
 		modBus.addListener(Neverwhere::onCommonSetup);
 		
@@ -122,6 +133,7 @@ public class Neverwhere
 		forgeBus.addListener(Neverwhere::onCheckSpawn);
 		forgeBus.addListener(Neverwhere::onChunkLoad);
 		forgeBus.addListener(Neverwhere::onChunkUnload);
+		forgeBus.addListener(Neverwhere::onPlayerUsedBoneMeal);
 
 	}
 
@@ -188,6 +200,11 @@ public class Neverwhere
 				EntityType.Builder.create(NeverwasEntity::new, EntityClassification.MONSTER)
 						.build(getModRL(NEVERWAS).toString()));
 	}
+	
+	public static void onRegisterFeatures(Registrator<Feature<?>> reg)
+	{
+		reg.register(TREE, new TreeFeature(NoFeatureConfig::deserialize, true, 4, neverPortalBlock.get().getDefaultState(), neverPortalBlock.get().getDefaultState(), false));
+	}
 
 	public static ResourceLocation getModRL(String name)
 	{
@@ -215,14 +232,15 @@ public class Neverwhere
 	public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event)
 	{
 		IWorld world = event.getWorld();
+		BlockState state = event.getState();
 		// when a block is placed on the server overworld
 		if (!world.isRemote() && world.getDimension().getType() == DimensionType.OVERWORLD
-				&& !event.getState().hasTileEntity()
 				&& !(event instanceof BlockEvent.EntityMultiPlaceEvent)
-				&& world.getRandom().nextDouble() < Config.block_place_reflection_chance)
+				&& world.getRandom().nextDouble() < Config.block_place_reflection_chance
+				&& Config.isBlockStateAllowedToReflectPlacement(state))
 		{
 			BlockPos pos = event.getPos();
-			BlockState state = event.getState();
+			
 			MinecraftServer server = event.getEntity().getServer();
 			
 			Neverwhere.addBlockReflectionEntry(world, pos, state, server);
@@ -386,6 +404,25 @@ public class Neverwhere
 //					chunkInNeverwhere.setBlockState(posInChunk, blockState, false);
 //				});
 //			}
+		}
+	}
+	
+	public static void onPlayerUsedBoneMeal(BonemealEvent event)
+	{
+		World world = event.getWorld();
+		BlockPos pos = event.getPos();
+		BlockState state = event.getBlock();
+		Block block = state.getBlock();
+		
+		if (!world.isRemote && block instanceof SaplingBlock)
+		{
+			SaplingBlock sapling = (SaplingBlock) block;
+			
+			if (sapling.canUseBonemeal(world, world.rand, pos, state))
+			{
+				VoidTree.INSTANCE.spawn(world, pos, state, world.rand);
+				event.setResult(Result.ALLOW);
+			}
 		}
 	}
 }

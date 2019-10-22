@@ -1,11 +1,14 @@
 package com.github.commoble.neverwhere;
 
+import java.util.Arrays;
+import java.util.Random;
 import java.util.UUID;
 import java.util.function.Function;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.SixWayBlock;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -80,6 +83,26 @@ public class NeverPortalBlock extends Block
 	public TileEntity createTileEntity(BlockState state, IBlockReader world)
 	{
 		return Neverwhere.neverPortalTEType.get().create();
+	}
+	
+	@Override
+	public void tick(BlockState state, World worldIn, BlockPos pos, Random random)
+	{
+		BlockPos up = pos.up();
+		float brightness = worldIn.getBrightness(up);
+		if (random.nextFloat() < brightness)
+		{
+			Arrays.stream(Direction.values()).forEach(dir -> 
+			{
+				if (random.nextFloat()*1.5F < brightness)
+				{
+					BlockPos adjacentPos = pos.offset(dir);
+					worldIn.getPendingBlockTicks().scheduleTick(adjacentPos, worldIn.getBlockState(adjacentPos).getBlock(), random.nextInt(20));
+				}
+			});
+			
+			worldIn.setBlockState(pos, Blocks.AIR.getDefaultState());
+		}
 	}
 
 	@Override
