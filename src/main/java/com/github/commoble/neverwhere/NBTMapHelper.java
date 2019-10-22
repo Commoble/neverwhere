@@ -105,17 +105,23 @@ public class NBTMapHelper<K, V>
 	 * @param nbt The CompoundNBT to read and construct the Map from
 	 * @return A Map that the data contained in the CompoundNBT represents
 	 */
-	public Map<K, V> read(CompoundNBT nbt)
+	public Map<K, V> read(final CompoundNBT nbt)
 	{
-		Map<K, V> newMap = new HashMap<>();
+		final Map<K, V> newMap = new HashMap<>();
 
-		ListNBT keyList = nbt.getList(this.name, 10);
-		int keyListSize = keyList.size();
+		final ListNBT keyList = nbt.getList(this.name, 10);
+		if (keyList == null)
+			return newMap;
+		
+		final int keyListSize = keyList.size();
+		
+		if (keyListSize <= 0)
+			return newMap;
 
 		IntStream.range(0, keyListSize).mapToObj(keyIterator -> keyList.getCompound(keyIterator))
 				.forEach(keyNBT -> {
-					K key = this.keyReader.apply(keyNBT);
-					V value = this.valueReader.apply(keyNBT);
+					final K key = this.keyReader.apply(keyNBT);
+					final V value = this.valueReader.apply(keyNBT);
 					
 					newMap.put(key, value);
 				});
@@ -130,15 +136,15 @@ public class NBTMapHelper<K, V>
 	 * @param compound A CompoundNBT to write the map into
 	 * @return a CompoundNBT that, when used as the argument to this.read(nbt), will cause that function to reconstruct and return a copy of the original map
 	 */
-	public CompoundNBT write(Map<K,V> map, CompoundNBT compound)
+	public CompoundNBT write(final Map<K,V> map, final CompoundNBT compound)
 	{
-		ListNBT listOfKeys = new ListNBT();
+		final ListNBT listOfKeys = new ListNBT();
 		map.entrySet().forEach(entry ->
 		{
-			K key = entry.getKey();
-			V value = entry.getValue();
+			final K key = entry.getKey();
+			final V value = entry.getValue();
 			
-			CompoundNBT entryNBT = new CompoundNBT();
+			final CompoundNBT entryNBT = new CompoundNBT();
 			this.keyWriter.accept(entryNBT, key);
 			this.valueWriter.accept(entryNBT, value);
 			
