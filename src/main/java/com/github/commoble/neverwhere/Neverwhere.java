@@ -20,6 +20,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.SaplingBlock;
+import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
@@ -174,7 +175,7 @@ public class Neverwhere
 	public static void onRegisterBlocks(Registrator<Block> reg)
 	{
 		reg.register(NEVERPORTAL, new NeverPortalBlock(Block.Properties.create(Material.PORTAL)
-				.hardnessAndResistance(-1.0F, 3600000.0F).doesNotBlockMovement().noDrops().tickRandomly()));
+				.hardnessAndResistance(0.3F).sound(SoundType.GLASS).doesNotBlockMovement().noDrops().tickRandomly()));
 	}
 	
 	// effects are needed during item instantiation at the moment but effects are registered after items

@@ -116,7 +116,7 @@ public class NeverPortalBlock extends Block
 			worldIn.setBlockState(posToSet,
 					Block.getValidBlockForPosition(state.with(LEVEL, level - 1), worldIn, posToSet));
 			worldIn.getPendingBlockTicks().scheduleTick(posToSet, this, worldIn.rand.nextInt(5)+1);
-		} else if (random.nextFloat() < brightness)
+		} else// if (random.nextFloat() < brightness)
 		{
 			Arrays.stream(Direction.values()).forEach(dir -> {
 				if (random.nextFloat() * 1.5F < brightness)
