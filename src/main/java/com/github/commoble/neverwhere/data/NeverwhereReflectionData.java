@@ -103,6 +103,11 @@ public class NeverwhereReflectionData extends WorldSavedData
 		this.markDirty();
 	}
 	
+	public boolean doesChunkNeedReflection(ChunkPos chunkPos)
+	{
+		return this.map.containsKey(chunkPos) && !this.map.get(chunkPos).isEmpty();
+	}
+	
 	public Map<BlockPos, BlockState> getAndClearChunkData(ChunkPos chunkPos)
 	{
 		Map<BlockPos, BlockState> subMap;

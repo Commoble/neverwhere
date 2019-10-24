@@ -465,8 +465,11 @@ public class Neverwhere
 		{
 			// load the chunk to trigger the chunkload event above
 			ChunkPos chunkPos = event.getChunk().getPos();
-			IChunk chunkInNeverwhere = ((ServerWorld) world).getServer().getWorld(Neverwhere.getDimensionType())
-					.getChunk(chunkPos.x, chunkPos.z);
+			if (NeverwhereReflectionData.get(world).doesChunkNeedReflection(chunkPos))
+			{
+				IChunk chunkInNeverwhere = ((ServerWorld) world).getServer().getWorld(Neverwhere.getDimensionType())
+						.getChunk(chunkPos.x, chunkPos.z);
+			}
 
 			// NeverwhereReflectionData data = NeverwhereReflectionData.get(world);
 			// ChunkPos chunkPos = event.getChunk().getPos();
