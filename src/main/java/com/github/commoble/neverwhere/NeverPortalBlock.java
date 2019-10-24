@@ -14,7 +14,6 @@ import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.IntegerProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BlockStateProperties;
-import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
@@ -62,7 +61,7 @@ public class NeverPortalBlock extends Block
 	@Override
 	public void onBlockAdded(BlockState state, World worldIn, BlockPos pos, BlockState oldState, boolean isMoving)
 	{
-		worldIn.getPendingBlockTicks().scheduleTick(pos, this, worldIn.rand.nextInt(20) + 20);
+		worldIn.getPendingBlockTicks().scheduleTick(pos, this, worldIn.rand.nextInt(5) + 1);
 	}
 
 //	public boolean doesSideBlockRendering(IWorld world, BlockPos blockingPos, BlockState blockingState,
@@ -107,7 +106,7 @@ public class NeverPortalBlock extends Block
 			BlockPos nextPos = pos.offset(dir);
 			BlockState nextState = worldIn.getBlockState(nextPos);
 			BlockPos posToSet;
-			if (nextState.getBlock() == Blocks.AIR)
+			if (nextState.getBlock() == Blocks.AIR && worldIn.rand.nextFloat() < brightness *1.5F)
 			{
 				posToSet = nextPos;
 			} else
@@ -116,7 +115,7 @@ public class NeverPortalBlock extends Block
 			}
 			worldIn.setBlockState(posToSet,
 					Block.getValidBlockForPosition(state.with(LEVEL, level - 1), worldIn, posToSet));
-			worldIn.getPendingBlockTicks().scheduleTick(posToSet, this, worldIn.rand.nextInt(20));
+			worldIn.getPendingBlockTicks().scheduleTick(posToSet, this, worldIn.rand.nextInt(5)+1);
 		} else if (random.nextFloat() < brightness)
 		{
 			Arrays.stream(Direction.values()).forEach(dir -> {
@@ -124,7 +123,7 @@ public class NeverPortalBlock extends Block
 				{
 					BlockPos adjacentPos = pos.offset(dir);
 					worldIn.getPendingBlockTicks().scheduleTick(adjacentPos,
-							worldIn.getBlockState(adjacentPos).getBlock(), random.nextInt(20));
+							worldIn.getBlockState(adjacentPos).getBlock(), random.nextInt(5)+1);
 				}
 			});
 
@@ -132,11 +131,11 @@ public class NeverPortalBlock extends Block
 		}
 	}
 
-	@Override
-	public BlockRenderLayer getRenderLayer()
-	{
-		return BlockRenderLayer.SOLID;
-	}
+//	@Override
+//	public BlockRenderLayer getRenderLayer()
+//	{
+//		return BlockRenderLayer.SOLID;
+//	}
 	//
 	// @Override
 	// public BlockRenderType getRenderType(BlockState state)

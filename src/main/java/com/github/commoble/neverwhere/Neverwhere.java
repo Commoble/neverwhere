@@ -382,7 +382,7 @@ public class Neverwhere
 
 			Random rand = world.rand;
 
-			if (rand.nextInt(1200) == 0)
+			if (rand.nextInt(Config.portal_void_spawn_infrequency) == 0)
 			{
 				List<? extends PlayerEntity> players = world.getPlayers();
 				int playerCount = players.size();
