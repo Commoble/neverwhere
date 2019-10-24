@@ -27,10 +27,14 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.Food;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.SpawnEggItem;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.potion.Effect;
+import net.minecraft.potion.EffectInstance;
+import net.minecraft.potion.EffectType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
@@ -77,10 +81,12 @@ public class Neverwhere
 	public static final String MODID = "neverwhere";
 	public static final String NEVERPORTAL = "neverportal";
 	public static final String TELEPORTER = "teleporter";
+	public static final String NUGGET = "nugget_of_regret";
 	public static final String NEVERWAS = "neverwas";
 	public static final String NEVERWAS_SPAWN_EGG = "neverwas_spawn_egg";
 	public static final String WIND = "wind";
 	public static final String TREE = "tree_hole";
+	public static final String INSTANT_XP = "instant_xp";
 
 	// registry objects
 	public static final RegistryObject<Block> neverPortalBlock = makeRegistryObject(NEVERPORTAL,
@@ -90,6 +96,9 @@ public class Neverwhere
 	public static final RegistryObject<Item> teleporterItem = makeRegistryObject(TELEPORTER, ForgeRegistries.ITEMS);
 	public static final RegistryObject<Item> neverWasSpawnEggItem = makeRegistryObject(NEVERWAS_SPAWN_EGG,
 			ForgeRegistries.ITEMS);
+	public static final RegistryObject<Item> nuggetItem = makeRegistryObject(NUGGET, ForgeRegistries.ITEMS);
+	
+	public static final RegistryObject<Effect> instantXPEffect = makeRegistryObject(INSTANT_XP, ForgeRegistries.POTIONS);
 
 //	public static final RegistryObject<TileEntityType<?>> neverPortalTEType = makeRegistryObject(NEVERPORTAL,
 //			ForgeRegistries.TILE_ENTITIES);
@@ -123,6 +132,7 @@ public class Neverwhere
 
 		modBus.addGenericListener(Block.class, multiObjectRegistrator(Neverwhere::onRegisterBlocks));
 		modBus.addGenericListener(Item.class, multiObjectRegistrator(Neverwhere::onRegisterItems));
+		modBus.addGenericListener(Effect.class, multiObjectRegistrator(Neverwhere::onRegisterEffects));
 		modBus.addGenericListener(SoundEvent.class, multiObjectRegistrator(Neverwhere::onRegisterSounds));
 //		modBus.addGenericListener(TileEntityType.class, multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
 		modBus.addGenericListener(EntityType.class, multiObjectRegistrator(Neverwhere::onRegisterEntities));
@@ -166,12 +176,18 @@ public class Neverwhere
 		reg.register(NEVERPORTAL, new NeverPortalBlock(Block.Properties.create(Material.PORTAL)
 				.hardnessAndResistance(-1.0F, 3600000.0F).doesNotBlockMovement().noDrops().tickRandomly()));
 	}
+	
+	// effects are needed during item instantiation at the moment but effects are registered after items
+	public static final Effect instantXPInstance = new InstantXPEffect(EffectType.BENEFICIAL, 0x01);
 
 	public static void onRegisterItems(Registrator<Item> reg)
 	{
 		reg.register(TELEPORTER, new TeleporterItem(new Item.Properties().group(ItemGroup.MISC)));
 		reg.register(NEVERPORTAL,
 				new BlockItem(neverPortalBlock.get(), new Item.Properties().group(ItemGroup.DECORATIONS)));
+		
+		Food NUGGET_FOOD = (new Food.Builder()).hunger(0).saturation(1F).fastToEat().setAlwaysEdible().effect(new EffectInstance(instantXPInstance), 1F).build();
+		reg.register(NUGGET, new Item(new Item.Properties().group(ItemGroup.FOOD).food(NUGGET_FOOD)));
 
 		// TODO fix setup w.r.t. spawn egg and entity type
 		// entity type is currently null when this is registered
@@ -186,6 +202,11 @@ public class Neverwhere
 						return Neverwhere.neverwas.get();
 					}
 				});
+	}
+	
+	public static void onRegisterEffects(Registrator<Effect> reg)
+	{
+		reg.register(INSTANT_XP, instantXPInstance);
 	}
 
 	public static void onRegisterSounds(Registrator<SoundEvent> reg)

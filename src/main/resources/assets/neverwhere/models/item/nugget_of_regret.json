@@ -1,0 +1,6 @@
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "neverwhere:item/nugget_of_regret"
+    }
+}
