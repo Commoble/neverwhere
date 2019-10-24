@@ -71,13 +71,12 @@ public class NeverwhereReflectionData extends WorldSavedData
 	{
 		super(name);
 	}
-	
 	/**
 	 * Puts a (blockpos, blockstate) entry into the submap for the chunk that contains that blockpos
 	 * If the submap's size exceeds the configurable limit after this operation,
 	 * then the map's contents are dumped into the relevant chunk in the Neverwhere
 	 */
-	public void put(MinecraftServer server, BlockPos blockPos, BlockState state)
+	public void putReflection(MinecraftServer server, BlockPos blockPos, BlockState state)
 	{
 		ChunkPos chunkPos = new ChunkPos(blockPos);
 

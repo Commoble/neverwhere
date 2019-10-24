@@ -1,5 +1,5 @@
 {
     "variants": {
-        "": { "model": "block/air" }
+        "": { "model": "neverwhere:block/neverportal" }
     }
 }

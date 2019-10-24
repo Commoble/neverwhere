@@ -36,6 +36,7 @@ public class Config
 	
 	private static final List<String> DEFAULT_WHITELIST = new ArrayList<>();
 	private static final List<String> DEFAULT_BLACKLIST = Lists.newArrayList(
+			"neverwhere:neverportal",
 			"minecraft:anvil",
 			"minecraft:bedrock",
 			"minecraft:coal_block",
@@ -59,6 +60,11 @@ public class Config
 	public static int reflection_buffer_size = 20;
 	public static Set<Block> block_reflection_whitelist = new HashSet<>();
 	public static Set<Block> block_reflection_blacklist = getBlockKeysAsBlocks(DEFAULT_BLACKLIST);
+	
+	public static double portal_spawn_on_grow_sapling_chance = 0.1D;
+	public static int portal_void_spawn_infrequency = 36000;
+	
+	public static int average_neverwhere_timeout = 5000;
 	
 	public static boolean isBlockStateAllowedToReflectPlacement(BlockState state)
 	{
@@ -107,6 +113,12 @@ public class Config
 		reflection_buffer_size = SERVER.reflection_buffer_size.get();
 		block_reflection_whitelist = getBlockKeysAsBlocks(SERVER.block_reflection_whitelist.get());
 		block_reflection_blacklist = getBlockKeysAsBlocks(SERVER.block_reflection_blacklist.get());
+		
+		portal_spawn_on_grow_sapling_chance = SERVER.portal_spawn_on_grow_sapling_chance.get();
+		portal_void_spawn_infrequency = SERVER.portal_void_spawn_infrequency.get();
+		
+		average_neverwhere_timeout = SERVER.average_neverwhere_timeout.get();
+		
 	}
 	
 	public static class ServerConfig
@@ -121,6 +133,11 @@ public class Config
 		public final ForgeConfigSpec.IntValue reflection_buffer_size;
 		public final ForgeConfigSpec.ConfigValue<List<? extends String>> block_reflection_whitelist;
 		public final ForgeConfigSpec.ConfigValue<List<? extends String>> block_reflection_blacklist;
+		
+		public final ForgeConfigSpec.DoubleValue portal_spawn_on_grow_sapling_chance;
+		public final ForgeConfigSpec.IntValue portal_void_spawn_infrequency;
+		
+		public final ForgeConfigSpec.IntValue average_neverwhere_timeout;
 		
 		ServerConfig(ForgeConfigSpec.Builder builder)
 		{
@@ -167,6 +184,28 @@ public class Config
 					.comment("Blacklist of Blocks that will never be reflected to the Neverwhere when placed in the Overworld. Blocks with TileEntities will never be reflected. If the whitelist is non-empty, the whitelist takes precedence over this list.")
 					.translation("neverwhere.config.block_reflection_blacklist")
 					.defineList("reflection_blacklisted_blocks", Config.DEFAULT_BLACKLIST, obj -> obj instanceof String && ForgeRegistries.BLOCKS.containsKey(new ResourceLocation(((String)obj))));
+			
+			builder.pop();
+			
+			builder.push("Portal Spawning");
+			
+			this.portal_spawn_on_grow_sapling_chance = builder
+					.comment("Probability that using bonemeal on saplings spawns a tree-shaped hole in the universe instead of a tree")
+					.translation("neverwhere.config.portal_spawn_on_grow_sapling_chance")
+					.defineInRange("portal_spawn_on_grow_sapling_chance", 0.1D, 0.0D, 1.0D);
+			this.portal_void_spawn_infrequency = builder
+					.comment("Average time in ticks between incursions of yawning voids. Probability of one mysteriously appearing near a random player in a given tick is 1/x where x is this value")
+					.translation("neverwhere.config.portal_void_spawn_infrequency")
+					.defineInRange("portal_void_spawn_infrequency", 36000, 1, Integer.MAX_VALUE);
+			
+			builder.pop();
+			
+			builder.push("Misc");
+			
+			this.average_neverwhere_timeout = builder
+					.comment("Average time in ticks in the neverwhere before being booted back to the overworld")
+					.translation("neverwhere.config.average_neverwhere_timeout")
+					.defineInRange("average_neverwhere_timeout", 5000, 1, Integer.MAX_VALUE);
 			
 			builder.pop();
 		}
