@@ -1,11 +1,7 @@
-package com.github.commoble.neverwhere.data;
+package com.github.commoble.neverwhere;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import com.github.commoble.neverwhere.Config;
-import com.github.commoble.neverwhere.NBTMapHelper;
-import com.github.commoble.neverwhere.Neverwhere;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;

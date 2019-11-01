@@ -1,8 +1,6 @@
-package com.github.commoble.neverwhere.feature;
+package com.github.commoble.neverwhere;
 
 import java.util.Random;
-
-import com.github.commoble.neverwhere.Neverwhere;
 
 import net.minecraft.block.trees.Tree;
 import net.minecraft.world.gen.feature.AbstractTreeFeature;

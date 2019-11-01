@@ -25,38 +25,13 @@ import net.minecraft.world.World;
 
 public class NeverPortalBlock extends Block
 {
-	// these states are used to determine which faces of the cube to render
-	// the TESR does some rendering that can't be done with a normal block model so
-	// it draws six faces instead
-	// these properties return TRUE if there is a block on that side that should
-	// prevent rendering of that face
-//	public static final BooleanProperty DOWN = SixWayBlock.DOWN;
-//	public static final BooleanProperty UP = SixWayBlock.UP;
-//	public static final BooleanProperty NORTH = SixWayBlock.NORTH;
-//	public static final BooleanProperty SOUTH = SixWayBlock.SOUTH;
-//	public static final BooleanProperty WEST = SixWayBlock.WEST;
-//	public static final BooleanProperty EAST = SixWayBlock.EAST;
 	public static final IntegerProperty LEVEL = BlockStateProperties.LEVEL_0_8;
-
-//	public static final BooleanProperty[] propertiesByRenderDirection = { EAST, WEST, DOWN, UP, NORTH, SOUTH };
 
 	public NeverPortalBlock(Properties properties)
 	{
 		super(properties);
 		this.setDefaultState(this.stateContainer.getBaseState().with(LEVEL, Integer.valueOf(8)));
-//		this.setDefaultState(this.stateContainer.getBaseState().with(NORTH, Boolean.valueOf(false))
-//				.with(EAST, Boolean.valueOf(false)).with(SOUTH, Boolean.valueOf(false))
-//				.with(WEST, Boolean.valueOf(false)).with(DOWN, Boolean.valueOf(false)).with(UP, Boolean.valueOf(false))
-//				.with(LEVEL, Integer.valueOf(8)));
 	}
-
-//	@Override
-//	public BlockState updatePostPlacement(BlockState stateIn, Direction facing, BlockState facingState, IWorld worldIn,
-//			BlockPos currentPos, BlockPos facingPos)
-//	{
-//		return stateIn.with(SixWayBlock.FACING_TO_PROPERTY_MAP.get(facing),
-//				Boolean.valueOf(this.doesSideBlockRendering(worldIn, facingPos, facingState, facing)));
-//	}
 
 	@Override
 	public void onBlockAdded(BlockState state, World worldIn, BlockPos pos, BlockState oldState, boolean isMoving)
@@ -64,33 +39,11 @@ public class NeverPortalBlock extends Block
 		worldIn.getPendingBlockTicks().scheduleTick(pos, this, worldIn.rand.nextInt(5) + 1);
 	}
 
-//	public boolean doesSideBlockRendering(IWorld world, BlockPos blockingPos, BlockState blockingState,
-//			Direction sideOfPortal)
-//	{
-//		return (blockingState.getBlock() == Neverwhere.neverPortalBlock.get()
-//				|| (blockingState.isOpaqueCube(world, blockingPos))
-//
-//		);
-//	}
-
 	@Override
 	protected void fillStateContainer(StateContainer.Builder<Block, BlockState> builder)
 	{
-//		builder.add(DOWN, UP, NORTH, SOUTH, WEST, EAST, LEVEL);
 		builder.add(LEVEL);
 	}
-
-//	@Override
-//	public boolean hasTileEntity(BlockState state)
-//	{
-//		return true;
-//	}
-//
-//	@Override
-//	public TileEntity createTileEntity(BlockState state, IBlockReader world)
-//	{
-//		return Neverwhere.neverPortalTEType.get().create();
-//	}
 
 	@Override
 	public void tick(BlockState state, World worldIn, BlockPos pos, Random random)
@@ -131,40 +84,11 @@ public class NeverPortalBlock extends Block
 		}
 	}
 
-//	@Override
-//	public BlockRenderLayer getRenderLayer()
-//	{
-//		return BlockRenderLayer.SOLID;
-//	}
-	//
-	// @Override
-	// public BlockRenderType getRenderType(BlockState state)
-	// {
-	// return BlockRenderType.INVISIBLE;
-	// }
-
-	// @Override
-	// @Deprecated
-	// @OnlyIn(Dist.CLIENT)
-	// public boolean isSideInvisible(BlockState state, BlockState adjacentState,
-	// Direction side)
-	// {
-	// Block adjacentBlock = adjacentState.getBlock();
-	// return adjacentBlock == Neverwhere.neverPortalBlock.get() ||
-	// super.isSideInvisible(state, adjacentState, side);
-	// }
-
 	@Override
 	public VoxelShape getShape(BlockState state, IBlockReader worldIn, BlockPos pos, ISelectionContext context)
 	{
 		return VoxelShapes.fullCube();
 	}
-
-//	@Override
-//	public VoxelShape getRaytraceShape(BlockState state, IBlockReader world, BlockPos pos)
-//	{
-//		return VoxelShapes.fullCube();
-//	}
 
 	@Override
 	public boolean propagatesSkylightDown(BlockState state, IBlockReader reader, BlockPos pos)

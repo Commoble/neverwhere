@@ -3,7 +3,6 @@ package com.github.commoble.neverwhere;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -12,9 +11,7 @@ import java.util.function.ToIntFunction;
 
 import javax.annotation.Nullable;
 
-import com.github.commoble.neverwhere.data.NeverwhereReflectionData;
 import com.github.commoble.neverwhere.dimension.NeverwhereModDimension;
-import com.github.commoble.neverwhere.feature.VoidTree;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -44,8 +41,11 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.IChunk;
 import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.gen.feature.AbstractTreeFeature;
 import net.minecraft.world.gen.feature.Feature;
 import net.minecraft.world.gen.feature.NoFeatureConfig;
@@ -64,7 +64,6 @@ import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.RegisterDimensionsEvent;
 import net.minecraftforge.eventbus.api.Event.Result;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.RegistryObject;
 import net.minecraftforge.fml.common.Mod;
@@ -98,11 +97,13 @@ public class Neverwhere
 	public static final RegistryObject<Item> neverWasSpawnEggItem = makeRegistryObject(NEVERWAS_SPAWN_EGG,
 			ForgeRegistries.ITEMS);
 	public static final RegistryObject<Item> nuggetItem = makeRegistryObject(NUGGET, ForgeRegistries.ITEMS);
-	
-	public static final RegistryObject<Effect> instantXPEffect = makeRegistryObject(INSTANT_XP, ForgeRegistries.POTIONS);
 
-//	public static final RegistryObject<TileEntityType<?>> neverPortalTEType = makeRegistryObject(NEVERPORTAL,
-//			ForgeRegistries.TILE_ENTITIES);
+	public static final RegistryObject<Effect> instantXPEffect = makeRegistryObject(INSTANT_XP,
+			ForgeRegistries.POTIONS);
+
+	// public static final RegistryObject<TileEntityType<?>> neverPortalTEType =
+	// makeRegistryObject(NEVERPORTAL,
+	// ForgeRegistries.TILE_ENTITIES);
 
 	public static final RegistryObject<EntityType<? extends NeverwasEntity>> neverwas = makeRegistryObject(NEVERWAS,
 			ForgeRegistries.ENTITIES);
@@ -123,9 +124,6 @@ public class Neverwhere
 	public static final RegistryObject<ModDimension> neverwhereModDimension = makeRegistryObject(MODID,
 			ForgeRegistries.MOD_DIMENSIONS);
 
-	public static final Optional<ClientProxy> CLIENTPROXY = Optional
-			.ofNullable(DistExecutor.runForDist(() -> () -> new ClientProxy(), () -> () -> null));
-
 	public Neverwhere()
 	{
 		IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -135,7 +133,8 @@ public class Neverwhere
 		modBus.addGenericListener(Item.class, multiObjectRegistrator(Neverwhere::onRegisterItems));
 		modBus.addGenericListener(Effect.class, multiObjectRegistrator(Neverwhere::onRegisterEffects));
 		modBus.addGenericListener(SoundEvent.class, multiObjectRegistrator(Neverwhere::onRegisterSounds));
-//		modBus.addGenericListener(TileEntityType.class, multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
+		// modBus.addGenericListener(TileEntityType.class,
+		// multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
 		modBus.addGenericListener(EntityType.class, multiObjectRegistrator(Neverwhere::onRegisterEntities));
 		modBus.addGenericListener(ModDimension.class, singleObjectRegistrator(MODID, new NeverwhereModDimension()));
 		modBus.addGenericListener(Feature.class, multiObjectRegistrator(Neverwhere::onRegisterFeatures));
@@ -177,8 +176,9 @@ public class Neverwhere
 		reg.register(NEVERPORTAL, new NeverPortalBlock(Block.Properties.create(Material.PORTAL)
 				.hardnessAndResistance(0.3F).sound(SoundType.GLASS).doesNotBlockMovement().noDrops().tickRandomly()));
 	}
-	
-	// effects are needed during item instantiation at the moment but effects are registered after items
+
+	// effects are needed during item instantiation at the moment but effects are
+	// registered after items
 	public static final Effect instantXPInstance = new InstantXPEffect(EffectType.BENEFICIAL, 0x01);
 
 	public static void onRegisterItems(Registrator<Item> reg)
@@ -186,8 +186,9 @@ public class Neverwhere
 		reg.register(TELEPORTER, new TeleporterItem(new Item.Properties().group(ItemGroup.MISC)));
 		reg.register(NEVERPORTAL,
 				new BlockItem(neverPortalBlock.get(), new Item.Properties().group(ItemGroup.DECORATIONS)));
-		
-		Food NUGGET_FOOD = (new Food.Builder()).hunger(0).saturation(1F).fastToEat().setAlwaysEdible().effect(new EffectInstance(instantXPInstance), 1F).build();
+
+		Food NUGGET_FOOD = (new Food.Builder()).hunger(0).saturation(1F).fastToEat().setAlwaysEdible()
+				.effect(new EffectInstance(instantXPInstance), 1F).build();
 		reg.register(NUGGET, new Item(new Item.Properties().group(ItemGroup.FOOD).food(NUGGET_FOOD)));
 
 		// TODO fix setup w.r.t. spawn egg and entity type
@@ -204,7 +205,7 @@ public class Neverwhere
 					}
 				});
 	}
-	
+
 	public static void onRegisterEffects(Registrator<Effect> reg)
 	{
 		reg.register(INSTANT_XP, instantXPInstance);
@@ -215,11 +216,12 @@ public class Neverwhere
 		reg.register(WIND, new SoundEvent(getModRL(WIND)));
 	}
 
-//	public static void onRegisterTileEntities(Registrator<TileEntityType<?>> reg)
-//	{
-//		reg.register(NEVERPORTAL,
-//				TileEntityType.Builder.create(NeverPortalTileEntity::new, neverPortalBlock.get()).build(null));
-//	}
+	// public static void onRegisterTileEntities(Registrator<TileEntityType<?>> reg)
+	// {
+	// reg.register(NEVERPORTAL,
+	// TileEntityType.Builder.create(NeverPortalTileEntity::new,
+	// neverPortalBlock.get()).build(null));
+	// }
 
 	public static void onRegisterEntities(Registrator<EntityType<?>> reg)
 	{
@@ -318,31 +320,23 @@ public class Neverwhere
 			{
 				PortalHelper.addTime(playerID, 1);
 			}
-//			if (portalTime == -1 && world.getDimension().getType() == Neverwhere.getDimensionType()
-//					&& !PortalHelper.displayedSpookyMessageRecently.contains(playerID))
-//			{
-//				PortalHelper.displayedSpookyMessageRecently.add(playerID);
-//			}
-//			if (portalTime >= 0 && world.rand.nextInt(100) == 0)
-//			{
-//				PortalHelper.displayedSpookyMessageRecently.remove(playerID);
-//			}
-			
+
 			if (world.getDimension().getType() == Neverwhere.getDimensionType())
 			{
 				if (portalTime >= 0 && world.rand.nextInt(Config.average_neverwhere_timeout) == 0)
 				{
-					PortalHelper.teleportPlayer((ServerPlayerEntity)player, x->x);
-				}
-				else if (world.getDifficulty() != Difficulty.PEACEFUL)
+					PortalHelper.teleportPlayer((ServerPlayerEntity) player, x -> x);
+				} else if (world.getDifficulty() != Difficulty.PEACEFUL)
 				{
 					// handle special spawning of neverwas
-					// if at minimum xp threshold for spawning, average one mob/minute (once every 1200 ticks)
-					// if at minimum xp threshold for unprovoked attacking, average one mob every ten seconds (once every 200 ticks)
+					// if at minimum xp threshold for spawning, average one mob/minute (once every
+					// 1200 ticks)
+					// if at minimum xp threshold for unprovoked attacking, average one mob every
+					// ten seconds (once every 200 ticks)
 					int spawn_threshold = Config.neverwas_spawn_threshold;
-//					int attack_threshold = Config.neverwas_attack_threshold;
+					// int attack_threshold = Config.neverwas_attack_threshold;
 					int currentXP = player.experienceLevel;
-					
+
 					// spawn -> 0F, attack -> 1F
 					// diff = attack-spawn
 					// x = current level
@@ -352,15 +346,15 @@ public class Neverwhere
 					if (currentXP >= spawn_threshold || player.isCreative())
 					{
 						float spawn_improbability_this_tick = 100F;
-//						if (currentXP >= attack_threshold)
-//						{
-//							spawn_improbability_this_tick = 100F;	// every five seconds
-//						}
-//						else
-//						{
-//							spawn_improbability_this_tick = 200F; // about every ten seconds
-//						}
-						if (world.rand.nextFloat()*spawn_improbability_this_tick < 1F)
+						// if (currentXP >= attack_threshold)
+						// {
+						// spawn_improbability_this_tick = 100F; // every five seconds
+						// }
+						// else
+						// {
+						// spawn_improbability_this_tick = 200F; // about every ten seconds
+						// }
+						if (world.rand.nextFloat() * spawn_improbability_this_tick < 1F)
 						{
 							NeverwasEntity.spawnNearPlayer(player);
 						}
@@ -451,9 +445,67 @@ public class Neverwhere
 					BlockPos posInChunk = new BlockPos(blockPos.getX() & 15, blockPos.getY(), blockPos.getZ() & 15);
 					if (!chunk.getBlockState(posInChunk).hasTileEntity()) // for complicated safety reasons
 					{
-						chunk.setBlockState(posInChunk, blockState, false);
+						//chunk.setBlockState(posInChunk, blockState, false);
+						Neverwhere.setBlockStateSafely(chunk, posInChunk, blockState);
+						world.getPendingBlockTicks().scheduleTick(blockPos, blockState.getBlock(), 1);
 					}
 				});
+			}
+		}
+	}
+
+	// as Chunk::setBlockState but without calls to onBlockAdded or onBlockReplaced
+	public static void setBlockStateSafely(IChunk ichunk, BlockPos pos, BlockState newState)
+	{
+		if (!(ichunk instanceof Chunk))
+		{
+			return;
+		}
+		Chunk chunk = (Chunk) ichunk;
+		int xInChunk = pos.getX() & 15;
+		int y = pos.getY();
+		int zInChunk = pos.getZ() & 15;
+		ChunkSection[] chunkSections = chunk.getSections();
+		ChunkSection chunkSection = chunkSections[y >> 4];
+		if (chunkSection == Chunk.EMPTY_SECTION)
+		{
+			if (newState.isAir())
+			{
+				return;
+			}
+
+			chunkSection = new ChunkSection(y >> 4 << 4);
+			chunkSections[y >> 4] = chunkSection;
+		}
+
+		boolean wasChunkSectionEmpty = chunkSection.isEmpty();
+		BlockState oldState = chunkSection.setBlockState(xInChunk, y & 15, zInChunk, newState);
+		if (oldState == newState)
+		{
+			return;
+		}
+		else
+		{
+			Block newBlock = newState.getBlock();
+			Block oldBlock = oldState.getBlock();
+			chunk.func_217303_b(Heightmap.Type.MOTION_BLOCKING).update(xInChunk, y, zInChunk, newState);
+			chunk.func_217303_b(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES).update(xInChunk, y, zInChunk, newState);
+			chunk.func_217303_b(Heightmap.Type.OCEAN_FLOOR).update(xInChunk, y, zInChunk, newState);
+			chunk.func_217303_b(Heightmap.Type.WORLD_SURFACE).update(xInChunk, y, zInChunk, newState);
+			boolean isChunkSectionEmpty = chunkSection.isEmpty();
+			if (wasChunkSectionEmpty != isChunkSectionEmpty)
+			{
+				chunk.getWorld().getChunkProvider().getLightManager().func_215567_a(pos, isChunkSectionEmpty);
+			}
+
+			if (chunkSection.getBlockState(xInChunk, y & 15, zInChunk).getBlock() != newBlock)
+			{
+				return;
+			}
+			else
+			{
+				chunk.markDirty();;
+				return;
 			}
 		}
 	}
@@ -470,26 +522,6 @@ public class Neverwhere
 				IChunk chunkInNeverwhere = ((ServerWorld) world).getServer().getWorld(Neverwhere.getDimensionType())
 						.getChunk(chunkPos.x, chunkPos.z);
 			}
-
-			// NeverwhereReflectionData data = NeverwhereReflectionData.get(world);
-			// ChunkPos chunkPos = event.getChunk().getPos();
-			//
-			// Map<BlockPos, BlockState> subMap = data.getAndClearChunkData(chunkPos);
-			//
-			// if (subMap.size() > 0)
-			// {
-			// IChunk chunkInNeverwhere =
-			// ((ServerWorld)world).getServer().getWorld(Neverwhere.getDimensionType()).getChunk(chunkPos.x,
-			// chunkPos.z);
-			//
-			//
-			// subMap.forEach((blockPos, blockState) ->
-			// {
-			// BlockPos posInChunk = new BlockPos(blockPos.getX() & 15, blockPos.getY(),
-			// blockPos.getZ() & 15);
-			// chunkInNeverwhere.setBlockState(posInChunk, blockState, false);
-			// });
-			// }
 		}
 	}
 
