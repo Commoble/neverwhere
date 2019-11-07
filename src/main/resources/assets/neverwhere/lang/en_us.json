@@ -1,7 +1,12 @@
 {
 	"block.neverwhere.neverportal": "Portable Hole",
 	"item.neverwhere.nugget_of_regret": "Nugget of Regret",
+	"item.minecraft.potion.effect.regret": "Potion of Regret",
+	"item.minecraft.splash_potion.effect.regret": "Splash Potion of Regret",
+	"item.minecraft.tipped_arrow.effect.regret": "Arrow of Regret",
+	"item_minecraft.lingering_potion.effect.regret": "Lingering Arrow of Regret",
 	"item.neverwhere.teleporter": "Neverwhere Creative Teleporter",
+	"effect.neverwhere.regret": "Regret",
 	"entity.neverwhere.neverwas": "Neverwas",
 	"item.neverwhere.neverwas_spawn_egg": "Neverwas Spawn Egg"
 }

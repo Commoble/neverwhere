@@ -28,11 +28,15 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.Food;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.item.Items;
 import net.minecraft.item.SpawnEggItem;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.potion.Effect;
 import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.EffectType;
+import net.minecraft.potion.Potion;
+import net.minecraft.potion.PotionBrewing;
+import net.minecraft.potion.Potions;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
@@ -87,6 +91,8 @@ public class Neverwhere
 	public static final String WIND = "wind";
 	public static final String TREE = "tree_hole";
 	public static final String INSTANT_XP = "instant_xp";
+	public static final String REGRET_EFFECT = "regret";
+	public static final String LONG_REGRET_EFFECT = "long_regret";
 
 	// registry objects
 	public static final RegistryObject<Block> neverPortalBlock = makeRegistryObject(NEVERPORTAL,
@@ -100,6 +106,9 @@ public class Neverwhere
 
 	public static final RegistryObject<Effect> instantXPEffect = makeRegistryObject(INSTANT_XP,
 			ForgeRegistries.POTIONS);
+	
+	public static final RegistryObject<Potion> regretPotion = makeRegistryObject(REGRET_EFFECT, ForgeRegistries.POTION_TYPES);
+	public static final RegistryObject<Potion> longRegretPotion = makeRegistryObject(LONG_REGRET_EFFECT, ForgeRegistries.POTION_TYPES);
 
 	// public static final RegistryObject<TileEntityType<?>> neverPortalTEType =
 	// makeRegistryObject(NEVERPORTAL,
@@ -132,6 +141,7 @@ public class Neverwhere
 		modBus.addGenericListener(Block.class, multiObjectRegistrator(Neverwhere::onRegisterBlocks));
 		modBus.addGenericListener(Item.class, multiObjectRegistrator(Neverwhere::onRegisterItems));
 		modBus.addGenericListener(Effect.class, multiObjectRegistrator(Neverwhere::onRegisterEffects));
+		modBus.addGenericListener(Potion.class, multiObjectRegistrator(Neverwhere::onRegisterPotions));
 		modBus.addGenericListener(SoundEvent.class, multiObjectRegistrator(Neverwhere::onRegisterSounds));
 		// modBus.addGenericListener(TileEntityType.class,
 		// multiObjectRegistrator(Neverwhere::onRegisterTileEntities));
@@ -180,6 +190,7 @@ public class Neverwhere
 	// effects are needed during item instantiation at the moment but effects are
 	// registered after items
 	public static final Effect instantXPInstance = new InstantXPEffect(EffectType.BENEFICIAL, 0x01);
+	public static final Effect regretEffectInstance = new TeleportEffect(EffectType.BENEFICIAL, 0x051015);
 
 	public static void onRegisterItems(Registrator<Item> reg)
 	{
@@ -190,6 +201,8 @@ public class Neverwhere
 		Food NUGGET_FOOD = (new Food.Builder()).hunger(0).saturation(1F).fastToEat().setAlwaysEdible()
 				.effect(new EffectInstance(instantXPInstance), 1F).build();
 		reg.register(NUGGET, new Item(new Item.Properties().group(ItemGroup.FOOD).food(NUGGET_FOOD)));
+		
+		
 
 		// TODO fix setup w.r.t. spawn egg and entity type
 		// entity type is currently null when this is registered
@@ -209,6 +222,13 @@ public class Neverwhere
 	public static void onRegisterEffects(Registrator<Effect> reg)
 	{
 		reg.register(INSTANT_XP, instantXPInstance);
+		reg.register(REGRET_EFFECT, regretEffectInstance);
+	}
+	
+	public static void onRegisterPotions(Registrator<Potion> reg)
+	{
+		reg.register(REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffectInstance, 3600)));
+		reg.register(LONG_REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffectInstance, 9600)));
 	}
 
 	public static void onRegisterSounds(Registrator<SoundEvent> reg)
@@ -248,6 +268,9 @@ public class Neverwhere
 	public static void onCommonSetup(FMLCommonSetupEvent event)
 	{
 		ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, Config.SERVER_SPEC);
+		
+		PotionBrewing.addMix(Potions.AWKWARD, Neverwhere.nuggetItem.get(), Neverwhere.regretPotion.get());
+		PotionBrewing.addMix(Neverwhere.regretPotion.get(), Items.REDSTONE, Neverwhere.longRegretPotion.get());
 	}
 
 	public static void onRegisterDimensions(RegisterDimensionsEvent event)
