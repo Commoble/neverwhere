@@ -349,8 +349,9 @@ public class Neverwhere
 						if (world.rand.nextInt(Config.neverwas_spawn_infrequency) == 0)
 						{
 							List<NeverwasEntity> moblist = ((ServerWorld)world)
-								.getEntitiesWithinAABB(NeverwasEntity.class, player.getBoundingBox()
-								.grow(Config.neverwas_spawn_cap_distance));
+								.getEntitiesWithinAABB(
+									NeverwasEntity.class,
+									player.getBoundingBox().grow(Config.neverwas_spawn_cap_distance));
 							if (moblist.size() < Config.neverwas_spawn_local_cap)
 							{
 								NeverwasEntity.spawnNearPlayer(player);
