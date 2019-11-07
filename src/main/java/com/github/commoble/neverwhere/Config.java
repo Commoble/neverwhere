@@ -34,6 +34,10 @@ public class Config
 	public static int neverwas_follow_threshold=15;
 	public static int neverwas_attack_threshold=20;
 	
+	public static int neverwas_spawn_infrequency = 200;
+	public static double neverwas_spawn_cap_distance = 32D;
+	public static int neverwas_spawn_local_cap = 20;
+	
 	private static final List<String> DEFAULT_WHITELIST = new ArrayList<>();
 	private static final List<String> DEFAULT_BLACKLIST = Lists.newArrayList(
 			"neverwhere:neverportal",
@@ -108,6 +112,10 @@ public class Config
 		neverwas_follow_threshold = SERVER.neverwas_follow_threshold.get();
 		neverwas_attack_threshold = SERVER.neverwas_attack_threshold.get();
 		
+		neverwas_spawn_infrequency = SERVER.neverwas_spawn_infrequency.get();
+		neverwas_spawn_cap_distance = SERVER.neverwas_spawn_cap_distance.get();
+		neverwas_spawn_local_cap = SERVER.neverwas_spawn_local_cap.get();
+		
 		block_place_reflection_chance = SERVER.block_place_reflection_chance.get();
 		block_break_reflection_chance = SERVER.block_break_reflection_chance.get();
 		reflection_buffer_size = SERVER.reflection_buffer_size.get();
@@ -127,6 +135,10 @@ public class Config
 		public final ForgeConfigSpec.IntValue neverwas_interest_threshold;
 		public final ForgeConfigSpec.IntValue neverwas_follow_threshold;
 		public final ForgeConfigSpec.IntValue neverwas_attack_threshold;
+		
+		public final ForgeConfigSpec.IntValue neverwas_spawn_infrequency;
+		public final ForgeConfigSpec.DoubleValue neverwas_spawn_cap_distance;
+		public final ForgeConfigSpec.IntValue neverwas_spawn_local_cap;
 		
 		public final ForgeConfigSpec.DoubleValue block_place_reflection_chance;
 		public final ForgeConfigSpec.DoubleValue block_break_reflection_chance;
@@ -159,6 +171,23 @@ public class Config
 					.comment("Minimum experience level for Neverwere to attack the player without provocation")
 					.translation("neverwhere.config.neverwas_attack_threshold")
 					.defineInRange("neverwas_attack_threshold", 20, 0, Integer.MAX_VALUE);
+			
+			builder.pop();
+			
+			builder.push("Neverwas Spawning");
+			
+			this.neverwas_spawn_infrequency = builder
+					.comment("Improbability of Neverwas spawning near a player every tick. e.g. 200 => 1/200 chance each tick, or about one every ten seconds")
+					.translation("neverwhere.neverwas_spawn_infrequency")
+					.defineInRange("neverwas_spawn_infrequency", 200, 1, Integer.MAX_VALUE);
+			this.neverwas_spawn_cap_distance = builder
+					.comment("The cubic radius around a player in which neverwas spawning considers nearby neverwas mobs when determining whether to spawn another one")
+					.translation("neverwhere.neverwas_spawn_cap_distance")
+					.defineInRange("neverwas_spawn_cap_distance", 32D, 0D, Double.MAX_VALUE);
+			this.neverwas_spawn_local_cap = builder
+					.comment("If this many neverwas exist within a cube around the player defined by the spawn cap distance, no more will be spawned")
+					.translation("neverwhere.neverwas_spawn_local_cap")
+					.defineInRange("neverwas_spawn_local_cap", 20, 0, Integer.MAX_VALUE);
 			
 			builder.pop();
 			

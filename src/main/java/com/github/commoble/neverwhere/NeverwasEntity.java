@@ -1,6 +1,5 @@
 package com.github.commoble.neverwhere;
 
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -49,7 +48,6 @@ public class NeverwasEntity extends MonsterEntity
 	public static void spawnNearPlayer(PlayerEntity player)
 	{
 		World world = player.world;
-		Random rand = world.rand;
 		double x = player.posX + world.rand.nextDouble() * 32D - 16D;
 		double z = player.posZ + world.rand.nextDouble() * 32D - 16D;
 		double y = player.posY + world.rand.nextDouble() * 16D + 16D;

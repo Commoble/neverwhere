@@ -312,7 +312,7 @@ public class Neverwhere
 	{
 		PlayerEntity player = event.player;
 		World world = player.world;
-		if (!world.isRemote && player instanceof ServerPlayerEntity) // server stuff
+		if (world instanceof ServerWorld && player instanceof ServerPlayerEntity) // server stuff
 		{
 			UUID playerID = player.getUniqueID();
 			int portalTime = PortalHelper.getTime(playerID);
@@ -345,18 +345,16 @@ public class Neverwhere
 					// if spawn == attack then checking xp >= attack first will be sufficient
 					if (currentXP >= spawn_threshold || player.isCreative())
 					{
-						float spawn_improbability_this_tick = 100F;
-						// if (currentXP >= attack_threshold)
-						// {
-						// spawn_improbability_this_tick = 100F; // every five seconds
-						// }
-						// else
-						// {
-						// spawn_improbability_this_tick = 200F; // about every ten seconds
-						// }
-						if (world.rand.nextFloat() * spawn_improbability_this_tick < 1F)
+						
+						if (world.rand.nextInt(Config.neverwas_spawn_infrequency) == 0)
 						{
-							NeverwasEntity.spawnNearPlayer(player);
+							List<NeverwasEntity> moblist = ((ServerWorld)world)
+								.getEntitiesWithinAABB(NeverwasEntity.class, player.getBoundingBox()
+								.grow(Config.neverwas_spawn_cap_distance));
+							if (moblist.size() < Config.neverwas_spawn_local_cap)
+							{
+								NeverwasEntity.spawnNearPlayer(player);
+							}
 						}
 					}
 				}
