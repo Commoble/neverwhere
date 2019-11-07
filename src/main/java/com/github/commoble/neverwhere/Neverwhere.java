@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
@@ -19,6 +20,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.SaplingBlock;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityClassification;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
@@ -62,6 +64,9 @@ import net.minecraftforge.event.RegistryEvent.Register;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.TickEvent.WorldTickEvent;
 import net.minecraftforge.event.entity.living.LivingSpawnEvent;
+import net.minecraftforge.event.entity.living.PotionEvent;
+import net.minecraftforge.event.entity.living.PotionEvent.PotionExpiryEvent;
+import net.minecraftforge.event.entity.living.PotionEvent.PotionRemoveEvent;
 import net.minecraftforge.event.entity.player.BonemealEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.ChunkEvent;
@@ -160,6 +165,9 @@ public class Neverwhere
 		forgeBus.addListener(Neverwhere::onChunkUnload);
 		forgeBus.addListener(Neverwhere::onPlayerUsedBoneMeal);
 		forgeBus.addListener(Neverwhere::onWorldTick);
+//		forgeBus.addListener(Neverwhere::onPotionAdded);
+		forgeBus.addListener(Neverwhere::onPotionRemoved);
+		forgeBus.addListener(Neverwhere::onPotionExpired);
 
 	}
 
@@ -190,7 +198,7 @@ public class Neverwhere
 	// effects are needed during item instantiation at the moment but effects are
 	// registered after items
 	public static final Effect instantXPInstance = new InstantXPEffect(EffectType.BENEFICIAL, 0x01);
-	public static final Effect regretEffectInstance = new TeleportEffect(EffectType.BENEFICIAL, 0x051015);
+	public static final Effect regretEffect = new TeleportEffect(EffectType.BENEFICIAL, 0x051015);
 
 	public static void onRegisterItems(Registrator<Item> reg)
 	{
@@ -222,13 +230,13 @@ public class Neverwhere
 	public static void onRegisterEffects(Registrator<Effect> reg)
 	{
 		reg.register(INSTANT_XP, instantXPInstance);
-		reg.register(REGRET_EFFECT, regretEffectInstance);
+		reg.register(REGRET_EFFECT, regretEffect);
 	}
 	
 	public static void onRegisterPotions(Registrator<Potion> reg)
 	{
-		reg.register(REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffectInstance, 3600)));
-		reg.register(LONG_REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffectInstance, 9600)));
+		reg.register(REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffect, 3600)));
+		reg.register(LONG_REGRET_EFFECT, new Potion(REGRET_EFFECT, new EffectInstance(regretEffect, 9600)));
 	}
 
 	public static void onRegisterSounds(Registrator<SoundEvent> reg)
@@ -316,7 +324,7 @@ public class Neverwhere
 
 	private static void addBlockReflectionEntry(IWorld world, BlockPos pos, BlockState state, MinecraftServer server)
 	{
-		// getting the world in this manner returns null if the world is not currently
+		// getting the world in this manner returns null if tSSSShe world is not currently
 		// loaded
 		ServerWorld otherWorld = DimensionManager.getWorld(server, getDimensionType(), true, false);
 
@@ -346,7 +354,9 @@ public class Neverwhere
 
 			if (world.getDimension().getType() == Neverwhere.getDimensionType())
 			{
-				if (portalTime >= 0 && world.rand.nextInt(Config.average_neverwhere_timeout) == 0)
+				if (portalTime >= 0
+						&& world.rand.nextInt(Config.average_neverwhere_timeout) == 0
+						&& player.getActivePotionEffect(Neverwhere.regretEffect) == null)
 				{
 					PortalHelper.teleportPlayer((ServerPlayerEntity) player, x -> x);
 				} else if (world.getDifficulty() != Difficulty.PEACEFUL)
@@ -381,6 +391,15 @@ public class Neverwhere
 							}
 						}
 					}
+				}
+			}
+			else if (world.getDimension().getType() == DimensionType.OVERWORLD)
+			{
+				if (player.getActivePotionEffect(Neverwhere.regretEffect) != null)
+				{
+					ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
+					PortalHelper.setTime(playerID, PortalHelper.COOLDOWN_AFTER_TELEPORT);
+					PortalHelper.teleportPlayer(serverPlayer, Function.identity());
 				}
 			}
 		}
@@ -568,4 +587,40 @@ public class Neverwhere
 		}
 	}
 
+//	public static void onPotionAdded(PotionAddedEvent event)
+//	{
+//		Entity entity = event.getEntity();
+//		if (event.getPotionEffect().getPotion() == Neverwhere.regretEffect
+//				&& (event.getOldPotionEffect() == null || event.getOldPotionEffect().getPotion() != Neverwhere.regretEffect)
+//				&& entity instanceof ServerPlayerEntity
+//				&& entity.world.getDimension().getType() == DimensionType.OVERWORLD)
+//		{
+//			ServerPlayerEntity serverPlayer = (ServerPlayerEntity) entity;
+//			PortalHelper.setTime(serverPlayer.getUniqueID(), PortalHelper.COOLDOWN_AFTER_TELEPORT);
+//			PortalHelper.teleportPlayer(serverPlayer, Function.identity());
+//		}
+//	}
+//	
+	public static void onPotionRemoved(PotionRemoveEvent event)
+	{
+		onEndOfRegretPotion(event);
+	}
+	
+	public static void onPotionExpired(PotionExpiryEvent event)
+	{
+		onEndOfRegretPotion(event);
+	}
+	
+	private static void onEndOfRegretPotion(PotionEvent event)
+	{
+		Entity entity = event.getEntity();
+		if (event.getPotionEffect().getPotion() == Neverwhere.regretEffect
+				&& entity instanceof ServerPlayerEntity
+				&& entity.world.getDimension().getType() == Neverwhere.getDimensionType())
+		{
+			ServerPlayerEntity serverPlayer = (ServerPlayerEntity) entity;
+			PortalHelper.setTime(serverPlayer.getUniqueID(), PortalHelper.COOLDOWN_AFTER_TELEPORT);
+			PortalHelper.teleportPlayer(serverPlayer, Function.identity());
+		}
+	}
 }
